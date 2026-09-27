@@ -5,7 +5,6 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'cauliOS — the cauliflower zone',
   description: 'A tiny internet home for cauli: saved art, music, notes, and random transmissions.',
-  generator: 'v0.app',
   icons: {
     icon: [
       {
