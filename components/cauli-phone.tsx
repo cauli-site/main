@@ -11,7 +11,6 @@ const apps = [
   { id: 'scrapbook', label: 'scrapbook', sublabel: 'saved art', icon: ImageIcon, color: 'pink' },
   { id: 'music', label: 'music', sublabel: 'cauli radio', icon: Headphones, color: 'blue' },
   { id: 'notes', label: 'notes', sublabel: 'daily nonsense', icon: NotebookPen, color: 'yellow' },
-  { id: 'interests', label: 'anonymous', sublabel: 'ask cauli', icon: MessageCircle, color: 'green' },
 ]
 const posts = [
   { text: 'Do You Play Fortnite Do You Play Fortnite', likes: '14', type: 'shitpost' },
