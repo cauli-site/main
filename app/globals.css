@@ -10,7 +10,7 @@ html, body { margin: 0; min-height: 100%; }
 body { background: #bde8d4; color: #273d36; font-family: Arial, Helvetica, sans-serif; }
 button { font: inherit; }
 
-.cauli-world { min-height: 100vh; position: relative; overflow: hidden; display: grid; place-items: center; padding: 38px 18px 26px; background: #68b9e9 url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/1349543.png-7Sho6vGKtOMhnamEzJ5C4eblkxZz8l.jpeg') center / cover fixed no-repeat; }
+.cauli-world { min-height: 100vh; position: relative; overflow: hidden; display: grid; place-items: center; padding: 38px 18px 26px; background: #68b9e9 url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/1349543.png-yBeeI4mhUWZl09rlTtVQ9eeunf5i1m.jpeg') center / cover fixed no-repeat; }
 .cauli-world::before { content: ''; position: absolute; inset: 0; opacity: .17; pointer-events: none; background-image: radial-gradient(#fff 1px, transparent 1px); background-size: 11px 11px; }
 .world-glow { position: absolute; border-radius: 999px; filter: blur(2px); opacity: .58; }
 .glow-one { width: 300px; height: 90px; background: #f8ffc1; top: 7%; left: -80px; transform: rotate(-12deg); }
@@ -60,7 +60,7 @@ button { font: inherit; }
 @media (max-width: 380px) { .cauli-world { padding-inline: 10px; }.phone-shell { border-width: 4px; }.screen-content { padding-inline: 10px; }.app-sublabel { font-size: 7px; } }
 
 /* Retro 2008 phone skin: glossy Aero chrome, chunky pixel edges, and playful desktop-era color. */
-.cauli-world { padding: 28px 16px 20px; background: linear-gradient(180deg, #78c9f2 0%, #c8f3f4 42%, #9bdc9b 43%, #3d9d63 100%); }
+.cauli-world { padding: 28px 16px 20px; background: #68b9e9 url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/1349543.png-yBeeI4mhUWZl09rlTtVQ9eeunf5i1m.jpeg') center / cover fixed no-repeat; }
 .cauli-world::before { opacity: .3; background-image: linear-gradient(135deg, #fff8 25%, transparent 25%), linear-gradient(315deg, #fff5 25%, transparent 25%); background-size: 18px 18px; }
 .cauli-world::after { content: ''; position: absolute; inset: auto 0 0; height: 42%; pointer-events: none; opacity: .35; background: repeating-linear-gradient(165deg, transparent 0 18px, #d9ffcf 19px 21px, transparent 22px 38px); }
 .world-glow { filter: none; opacity: .7; border: 3px solid #ffffff99; box-shadow: 0 0 0 3px #2f91c444, inset 0 0 20px #fff; }
