@@ -10,7 +10,7 @@ html, body { margin: 0; min-height: 100%; }
 body { background: #bde8d4; color: #273d36; font-family: Arial, Helvetica, sans-serif; }
 button { font: inherit; }
 
-.cauli-world { min-height: 100vh; position: relative; overflow: hidden; display: grid; place-items: center; padding: 38px 18px 26px; background: #68b9e9 url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/1349543.png-7Sho6vGKtOMhnamEzJ5C4eblkxZz8l.jpeg') center / cover fixed no-repeat; }
+.cauli-world { min-height: 100vh; position: relative; overflow: hidden; display: grid; place-items: center; padding: 38px 18px 26px; background: #68b9e9 url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/1349543.png-yBeeI4mhUWZl09rlTtVQ9eeunf5i1m.jpeg') center / cover fixed no-repeat; }
 .cauli-world::before { content: ''; position: absolute; inset: 0; opacity: .17; pointer-events: none; background-image: radial-gradient(#fff 1px, transparent 1px); background-size: 11px 11px; }
 .world-glow { position: absolute; border-radius: 999px; filter: blur(2px); opacity: .58; }
 .glow-one { width: 300px; height: 90px; background: #f8ffc1; top: 7%; left: -80px; transform: rotate(-12deg); }
