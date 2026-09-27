@@ -1,9 +1,4 @@
-const GITHUB_API = 'https://api.github.com'
-const DATA_PATH = 'data/cauli-local.json'
-const OWNER = process.env.GITHUB_OWNER || 'cauli-site'
-const REPO = process.env.GITHUB_REPO || 'main'
-const BRANCH = process.env.GITHUB_BRANCH || 'main'
-const TOKEN = process.env.GITHUB_TOKEN
+import { MongoClient, type Collection } from 'mongodb'
 
 type ContentRow = {
   id: string
@@ -20,185 +15,86 @@ type QuestionRow = {
   read_at: string | null
 }
 
-type Store = {
-  content: ContentRow[]
-  questions: QuestionRow[]
-  nextQuestionId: number
+type MongoState = {
+  client: MongoClient
+  content: Collection<ContentRow>
+  questions: Collection<QuestionRow>
 }
 
-type GitHubFile = {
-  content?: string
-  sha?: string
-}
+const uri = process.env.MONGODB_URI
 
-const emptyStore: Store = {
-  content: [],
-  questions: [],
-  nextQuestionId: 1,
-}
+if (!uri) throw new Error('MONGODB_URI is not configured.')
 
-function assertConfig() {
-  if (!TOKEN) {
-    throw new Error('GITHUB_TOKEN is not configured.')
+const globalForMongo = globalThis as typeof globalThis & { cauliMongo?: Promise<MongoState> }
+
+async function getState(): Promise<MongoState> {
+  if (!globalForMongo.cauliMongo) {
+    globalForMongo.cauliMongo = (async () => {
+      const client = new MongoClient(uri)
+      await client.connect()
+      const database = client.db('cauli')
+      return {
+        client,
+        content: database.collection<ContentRow>('content'),
+        questions: database.collection<QuestionRow>('questions'),
+      }
+    })()
   }
-}
-
-function fileUrl() {
-  return `${GITHUB_API}/repos/${encodeURIComponent(OWNER)}/${encodeURIComponent(REPO)}/contents/${DATA_PATH}`
-}
-
-function headers() {
-  assertConfig()
-  return {
-    Accept: 'application/vnd.github+json',
-    Authorization: `Bearer ${TOKEN}`,
-    'X-GitHub-Api-Version': '2022-11-28',
-    'User-Agent': 'cauli-fan-site',
-    'Content-Type': 'application/json',
-  }
-}
-
-function normalizeStore(value: unknown): Store {
-  if (!value || typeof value !== 'object') return structuredClone(emptyStore)
-
-  const source = value as Partial<Store>
-  return {
-    content: Array.isArray(source.content) ? source.content : [],
-    questions: Array.isArray(source.questions) ? source.questions : [],
-    nextQuestionId:
-      typeof source.nextQuestionId === 'number' && Number.isFinite(source.nextQuestionId)
-        ? source.nextQuestionId
-        : 1,
-  }
-}
-
-async function getFile(): Promise<{ store: Store; sha: string | null }> {
-  const response = await fetch(`${fileUrl()}?ref=${encodeURIComponent(BRANCH)}`, {
-    method: 'GET',
-    headers: headers(),
-    cache: 'no-store',
-  })
-
-  if (response.status === 404) {
-    return { store: structuredClone(emptyStore), sha: null }
-  }
-
-  if (!response.ok) {
-    const details = await response.text()
-    throw new Error(`GitHub read failed (${response.status}): ${details}`)
-  }
-
-  const file = (await response.json()) as GitHubFile
-  if (!file.content) return { store: structuredClone(emptyStore), sha: file.sha ?? null }
-
-  const json = Buffer.from(file.content.replace(/\n/g, ''), 'base64').toString('utf8')
-  return { store: normalizeStore(JSON.parse(json)), sha: file.sha ?? null }
-}
-
-async function saveFile(store: Store, sha: string | null, message: string) {
-  const body: Record<string, string> = {
-    message,
-    content: Buffer.from(`${JSON.stringify(store, null, 2)}\n`, 'utf8').toString('base64'),
-    branch: BRANCH,
-  }
-
-  if (sha) body.sha = sha
-
-  const response = await fetch(fileUrl(), {
-    method: 'PUT',
-    headers: headers(),
-    body: JSON.stringify(body),
-    cache: 'no-store',
-  })
-
-  if (!response.ok) {
-    const details = await response.text()
-    const error = new Error(`GitHub write failed (${response.status}): ${details}`)
-    ;(error as Error & { status?: number }).status = response.status
-    throw error
-  }
-}
-
-async function load(): Promise<Store> {
-  return (await getFile()).store
-}
-
-async function updateStore(
-  mutate: (store: Store) => void,
-  message: string,
-) {
-  // A short retry handles two requests arriving at nearly the same time.
-  // If GitHub rejects a stale SHA with 409, reload the newest file and apply
-  // the same mutation again instead of losing the other request's changes.
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const { store, sha } = await getFile()
-    mutate(store)
-
-    try {
-      await saveFile(store, sha, message)
-      return
-    } catch (error) {
-      const status = (error as Error & { status?: number }).status
-      if (status !== 409 || attempt === 2) throw error
-    }
-  }
+  return globalForMongo.cauliMongo
 }
 
 export async function listContent() {
-  return (await load()).content.sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const { content } = await getState()
+  return content.find({}).sort({ created_at: -1 }).toArray()
 }
 
 export async function upsertContent(row: Omit<ContentRow, 'created_at'>) {
-  await updateStore((store) => {
-    const now = new Date().toISOString()
-    const existing = store.content.findIndex((item) => item.id === row.id)
-    const next = {
-      ...row,
-      created_at: existing >= 0 ? store.content[existing].created_at : now,
-      updated_at: now,
-    }
-
-    if (existing >= 0) store.content[existing] = next
-    else store.content.push(next)
-  }, `Update content: ${row.id}`)
+  const { content } = await getState()
+  const now = new Date().toISOString()
+  await content.updateOne(
+    { id: row.id },
+    { $set: { ...row, updated_at: now }, $setOnInsert: { created_at: now } },
+    { upsert: true },
+  )
 }
 
 export async function deleteContent(id: string) {
-  let deleted = 0
-
-  await updateStore((store) => {
-    const before = store.content.length
-    store.content = store.content.filter((item) => item.id !== id)
-    deleted = before - store.content.length
-  }, `Delete content: ${id}`)
-
-  return deleted
+  const { content } = await getState()
+  const result = await content.deleteOne({ id })
+  return result.deletedCount
 }
 
 export async function listQuestions() {
-  return (await load()).questions.sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const { questions } = await getState()
+  return questions.find({}).sort({ created_at: -1 }).toArray()
 }
 
 export async function addQuestion(message: string) {
-  await updateStore((store) => {
-    store.questions.push({
-      id: store.nextQuestionId++,
-      message,
-      created_at: new Date().toISOString(),
-      read_at: null,
-    })
-  }, 'Add question')
+  const { questions } = await getState()
+  const latest = await questions.findOne({}, { sort: { id: -1 }, projection: { id: 1 } })
+  await questions.insertOne({
+    id: (latest?.id ?? 0) + 1,
+    message,
+    created_at: new Date().toISOString(),
+    read_at: null,
+  })
 }
 
 export async function markQuestionRead(id: number) {
-  await updateStore((store) => {
-    const item = store.questions.find((question) => question.id === id)
-    if (item) item.read_at = new Date().toISOString()
-  }, `Mark question ${id} as read`)
+  const { questions } = await getState()
+  await questions.updateOne({ id }, { $set: { read_at: new Date().toISOString() } })
 }
 
 export async function deleteQuestion(id: number) {
-  await updateStore((store) => {
-    store.questions = store.questions.filter((question) => question.id !== id)
-  }, `Delete question: ${id}`)
+  const { questions } = await getState()
+  await questions.deleteOne({ id })
 }
+
+export async function ensureIndexes() {
+  const { content, questions } = await getState()
+  await Promise.all([content.createIndex({ id: 1 }, { unique: true }), questions.createIndex({ id: 1 }, { unique: true })])
+}
+
+void ensureIndexes()
+  .catch(() => undefined)
+  .finally(() => undefined)
