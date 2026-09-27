@@ -8,9 +8,9 @@ import {
 
 const avatarUrl = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-VYwavnTVVqMW4oqaLe840F8sI19aGB.png'
 const apps = [
-  { id: 'scrapbook', label: 'scrapbook', sublabel: 'saved art', icon: ImageIcon, color: 'pink' },
-  { id: 'music', label: 'music', sublabel: 'cauli radio', icon: Headphones, color: 'blue' },
-  { id: 'notes', label: 'notes', sublabel: 'daily nonsense', icon: NotebookPen, color: 'yellow' },
+  { id: 'scrapbook', label: 'scrapbook', sublabel: '', icon: ImageIcon, color: 'pink' },
+  { id: 'music', label: 'music', sublabel: '', icon: Headphones, color: 'blue' },
+  { id: 'notes', label: 'notes', sublabel: '', icon: NotebookPen, color: 'yellow' },
   { id: 'interests', label: 'anonymous', sublabel: 'ask cauli', icon: MessageCircle, color: 'green' },
 ]
 const posts = [
