@@ -1,9 +1,4 @@
-const GITHUB_API = 'https://api.github.com'
-const DATA_PATH = 'data/cauli-local.json'
-const OWNER = process.env.GITHUB_OWNER || 'cauli-site'
-const REPO = process.env.GITHUB_REPO || 'main'
-const BRANCH = process.env.GITHUB_BRANCH || 'main'
-const TOKEN = process.env.GITHUB_TOKEN
+import { MongoClient, type Collection, type Db } from 'mongodb'
 
 type ContentRow = {
   id: string
@@ -20,185 +15,110 @@ type QuestionRow = {
   read_at: string | null
 }
 
-type Store = {
-  content: ContentRow[]
-  questions: QuestionRow[]
-  nextQuestionId: number
+type CounterRow = {
+  _id: 'questions'
+  value: number
 }
 
-type GitHubFile = {
-  content?: string
-  sha?: string
+type ContentDocument = ContentRow & { _id: string }
+type QuestionDocument = QuestionRow & { _id: number }
+
+let clientPromise: Promise<MongoClient> | undefined
+let indexesPromise: Promise<void> | undefined
+
+function getMongoUri() {
+  const uri = process.env.MONGODB_URI
+  if (!uri) throw new Error('MONGODB_URI is not configured.')
+  return uri
 }
 
-const emptyStore: Store = {
-  content: [],
-  questions: [],
-  nextQuestionId: 1,
-}
-
-function assertConfig() {
-  if (!TOKEN) {
-    throw new Error('GITHUB_TOKEN is not configured.')
+function getClient() {
+  if (!clientPromise) {
+    clientPromise = new MongoClient(getMongoUri()).connect()
   }
+  return clientPromise
 }
 
-function fileUrl() {
-  return `${GITHUB_API}/repos/${encodeURIComponent(OWNER)}/${encodeURIComponent(REPO)}/contents/${DATA_PATH}`
+async function getDatabase(): Promise<Db> {
+  const client = await getClient()
+  const databaseName = process.env.MONGODB_DATABASE || new URL(getMongoUri()).pathname.slice(1) || 'cauli'
+  return client.db(databaseName)
 }
 
-function headers() {
-  assertConfig()
-  return {
-    Accept: 'application/vnd.github+json',
-    Authorization: `Bearer ${TOKEN}`,
-    'X-GitHub-Api-Version': '2022-11-28',
-    'User-Agent': 'cauli-fan-site',
-    'Content-Type': 'application/json',
+async function getCollections() {
+  const db = await getDatabase()
+  const content = db.collection<ContentDocument>('content')
+  const questions = db.collection<QuestionDocument>('questions')
+  const counters = db.collection<CounterRow>('counters')
+
+  if (!indexesPromise) {
+    indexesPromise = Promise.all([
+      content.createIndex({ created_at: -1 }),
+      questions.createIndex({ created_at: -1 }),
+    ]).then(() => undefined)
   }
-}
+  await indexesPromise
 
-function normalizeStore(value: unknown): Store {
-  if (!value || typeof value !== 'object') return structuredClone(emptyStore)
-
-  const source = value as Partial<Store>
-  return {
-    content: Array.isArray(source.content) ? source.content : [],
-    questions: Array.isArray(source.questions) ? source.questions : [],
-    nextQuestionId:
-      typeof source.nextQuestionId === 'number' && Number.isFinite(source.nextQuestionId)
-        ? source.nextQuestionId
-        : 1,
-  }
-}
-
-async function getFile(): Promise<{ store: Store; sha: string | null }> {
-  const response = await fetch(`${fileUrl()}?ref=${encodeURIComponent(BRANCH)}`, {
-    method: 'GET',
-    headers: headers(),
-    cache: 'no-store',
-  })
-
-  if (response.status === 404) {
-    return { store: structuredClone(emptyStore), sha: null }
-  }
-
-  if (!response.ok) {
-    const details = await response.text()
-    throw new Error(`GitHub read failed (${response.status}): ${details}`)
-  }
-
-  const file = (await response.json()) as GitHubFile
-  if (!file.content) return { store: structuredClone(emptyStore), sha: file.sha ?? null }
-
-  const json = Buffer.from(file.content.replace(/\n/g, ''), 'base64').toString('utf8')
-  return { store: normalizeStore(JSON.parse(json)), sha: file.sha ?? null }
-}
-
-async function saveFile(store: Store, sha: string | null, message: string) {
-  const body: Record<string, string> = {
-    message,
-    content: Buffer.from(`${JSON.stringify(store, null, 2)}\n`, 'utf8').toString('base64'),
-    branch: BRANCH,
-  }
-
-  if (sha) body.sha = sha
-
-  const response = await fetch(fileUrl(), {
-    method: 'PUT',
-    headers: headers(),
-    body: JSON.stringify(body),
-    cache: 'no-store',
-  })
-
-  if (!response.ok) {
-    const details = await response.text()
-    const error = new Error(`GitHub write failed (${response.status}): ${details}`)
-    ;(error as Error & { status?: number }).status = response.status
-    throw error
-  }
-}
-
-async function load(): Promise<Store> {
-  return (await getFile()).store
-}
-
-async function updateStore(
-  mutate: (store: Store) => void,
-  message: string,
-) {
-  // A short retry handles two requests arriving at nearly the same time.
-  // If GitHub rejects a stale SHA with 409, reload the newest file and apply
-  // the same mutation again instead of losing the other request's changes.
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const { store, sha } = await getFile()
-    mutate(store)
-
-    try {
-      await saveFile(store, sha, message)
-      return
-    } catch (error) {
-      const status = (error as Error & { status?: number }).status
-      if (status !== 409 || attempt === 2) throw error
-    }
-  }
+  return { content, questions, counters }
 }
 
 export async function listContent() {
-  return (await load()).content.sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const { content } = await getCollections()
+  return content.find({}, { projection: { _id: 0 } }).sort({ created_at: -1 }).toArray()
 }
 
 export async function upsertContent(row: Omit<ContentRow, 'created_at'>) {
-  await updateStore((store) => {
-    const now = new Date().toISOString()
-    const existing = store.content.findIndex((item) => item.id === row.id)
-    const next = {
-      ...row,
-      created_at: existing >= 0 ? store.content[existing].created_at : now,
-      updated_at: now,
-    }
+  const { content } = await getCollections()
+  const now = new Date().toISOString()
+  const existing = await content.findOne({ _id: row.id }, { projection: { created_at: 1 } })
 
-    if (existing >= 0) store.content[existing] = next
-    else store.content.push(next)
-  }, `Update content: ${row.id}`)
+  await content.replaceOne(
+    { _id: row.id },
+    {
+      _id: row.id,
+      ...row,
+      created_at: existing?.created_at ?? now,
+      updated_at: now,
+    },
+    { upsert: true },
+  )
 }
 
 export async function deleteContent(id: string) {
-  let deleted = 0
-
-  await updateStore((store) => {
-    const before = store.content.length
-    store.content = store.content.filter((item) => item.id !== id)
-    deleted = before - store.content.length
-  }, `Delete content: ${id}`)
-
-  return deleted
+  const { content } = await getCollections()
+  const result = await content.deleteOne({ _id: id })
+  return result.deletedCount
 }
 
 export async function listQuestions() {
-  return (await load()).questions.sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const { questions } = await getCollections()
+  return questions.find({}, { projection: { _id: 0 } }).sort({ created_at: -1 }).toArray()
 }
 
 export async function addQuestion(message: string) {
-  await updateStore((store) => {
-    store.questions.push({
-      id: store.nextQuestionId++,
-      message,
-      created_at: new Date().toISOString(),
-      read_at: null,
-    })
-  }, 'Add question')
+  const { questions, counters } = await getCollections()
+  const counter = await counters.findOneAndUpdate(
+    { _id: 'questions' },
+    { $inc: { value: 1 } },
+    { upsert: true, returnDocument: 'after' },
+  )
+  const id = counter?.value ?? 1
+
+  await questions.insertOne({
+    _id: id,
+    id,
+    message,
+    created_at: new Date().toISOString(),
+    read_at: null,
+  })
 }
 
 export async function markQuestionRead(id: number) {
-  await updateStore((store) => {
-    const item = store.questions.find((question) => question.id === id)
-    if (item) item.read_at = new Date().toISOString()
-  }, `Mark question ${id} as read`)
+  const { questions } = await getCollections()
+  await questions.updateOne({ _id: id }, { $set: { read_at: new Date().toISOString() } })
 }
 
 export async function deleteQuestion(id: number) {
-  await updateStore((store) => {
-    store.questions = store.questions.filter((question) => question.id !== id)
-  }, `Delete question: ${id}`)
+  const { questions } = await getCollections()
+  await questions.deleteOne({ _id: id })
 }
