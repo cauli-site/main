@@ -89,7 +89,7 @@ button { font: inherit; }
 
 @media (max-width: 380px) { .phone-shell { border-radius: 0; } }
 
-.page-decorations { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.page-decorations { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
 .page-decoration-wrap { position: absolute; pointer-events: none; }
 .page-decoration { display: block; width: 92px; max-height: 120px; object-fit: contain; image-rendering: auto; filter: drop-shadow(3px 3px 0 #24527b); transform: rotate(-4deg); }
 .page-decoration-wrap.top-left { top: 12%; left: 7%; }.page-decoration-wrap.top-right { top: 20%; right: 8%; }.page-decoration-wrap.bottom-left { bottom: 17%; left: 8%; }.page-decoration-wrap.bottom-right { bottom: 10%; right: 6%; }
