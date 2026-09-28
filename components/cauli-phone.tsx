@@ -40,7 +40,7 @@ function PageDecorations({ adminMode }: { adminMode: boolean }) {
     reader.onerror = () => setUploadStatus('could not read that file')
     reader.onload = async () => {
       try {
-        const item: Decoration = { id: `decoration-${Date.now()}`, url: String(reader.result), alt: file.name, x: 50, y: 50, rotation: 0, scale: 1, layer: 'above' }
+        const item: Decoration = { id: `decoration-${Date.now()}`, url: String(reader.result), alt: file.name, x: 50, y: 88, rotation: 0, scale: 1, layer: 'above' }
         const response = await saveDecoration(item)
         if (!response.ok) throw new Error('save failed')
         setDecorations((items) => [...items, item])

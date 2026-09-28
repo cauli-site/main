@@ -178,7 +178,6 @@ button { font: inherit; }
   .quote-widget { font-size: 9px; }
   .dock { padding: 7px 12px 6px; }
   .outside-caption { margin: 4px 0 0; }
-  .page-decorations { display: none; }
 }
 
 @media (max-width: 330px) {
