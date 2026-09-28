@@ -89,7 +89,7 @@ button { font: inherit; }
 
 @media (max-width: 380px) { .phone-shell { border-radius: 0; } }
 
-.page-decorations { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.page-decorations { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
 .page-decoration-wrap { position: absolute; pointer-events: none; }
 .page-decoration { display: block; width: 92px; max-height: 120px; object-fit: contain; image-rendering: auto; filter: drop-shadow(3px 3px 0 #24527b); transform: rotate(-4deg); }
 .page-decoration-wrap.top-left { top: 12%; left: 7%; }.page-decoration-wrap.top-right { top: 20%; right: 8%; }.page-decoration-wrap.bottom-left { bottom: 17%; left: 8%; }.page-decoration-wrap.bottom-right { bottom: 10%; right: 6%; }
@@ -100,7 +100,8 @@ button { font: inherit; }
  .decoration-upload { pointer-events: auto; border: 2px solid #174d78; padding: 6px 8px; color: #174d78; background: #f6ffb9; box-shadow: 3px 3px 0 #174d78; cursor: pointer; font: 700 10px monospace; }
  .decoration-upload input { display: none; }
  .decoration-upload-status { color: #174d78; background: #efffff; border: 1px solid #174d78; padding: 2px 4px; font: 700 8px monospace; }
-@media (max-width: 700px) { .page-decoration { width: 64px; max-height: 86px; }.decoration-upload { top: 8px; right: 8px; } }
+.profile-editor-backdrop { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 18px; background: #10487599; backdrop-filter: blur(2px); }.profile-editor { width: min(100%, 330px); display: grid; gap: 10px; padding: 16px; border: 3px solid #174d78; background: #eafff0; box-shadow: 6px 6px 0 #174d78; color: #174d78; font: 11px monospace; }.profile-editor h2 { margin: 0 0 4px; font-size: 16px; }.profile-editor label { display: grid; gap: 4px; }.profile-editor input { width: 100%; border: 2px solid #63a0ac; padding: 7px; color: #174d78; background: #f6ffb9; font: inherit; }.profile-editor > div { display: flex; justify-content: flex-end; gap: 8px; }.profile-editor button { border: 2px solid #2776a0; padding: 6px 8px; color: #fff; background: linear-gradient(#54b9e8, #2375a4); font: 700 10px monospace; cursor: pointer; }.profile-editor button:first-child { color: #174d78; background: #fff; }
+@media (max-width: 700px) { .page-decoration { width: 64px; max-height: 86px; }.decoration-upload-group { top: auto; right: auto; bottom: 10px; left: 50%; transform: translateX(-50%); }.decoration-upload { white-space: nowrap; } }
 
 /* AIMP-inspired cauli radio: compact chrome, playlist-first controls, no floating cards. */
 .music-inner { background: linear-gradient(#d7f0df, #9dc9bc); padding: 8px; color: #193d3b; }
@@ -177,7 +178,6 @@ button { font: inherit; }
   .quote-widget { font-size: 9px; }
   .dock { padding: 7px 12px 6px; }
   .outside-caption { margin: 4px 0 0; }
-  .page-decorations { display: none; }
 }
 
 @media (max-width: 330px) {
